@@ -326,5 +326,36 @@ def main() -> None:
         sys.exit(1)
 
 
+# -----------------------------
+# Flask web server for Render
+# -----------------------------
+from flask import Flask
+from threading import Thread
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "Text-to-Video Bot is running!", 200
+
+@app.route("/health")
+def health():
+    return {"status": "ok"}, 200
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app.run(
+        host="0.0.0.0",
+        port=port,
+        debug=False,
+        use_reloader=False
+    )
+
+if __name__ == "__main__":
+    # Start Flask server in background
+    Thread(target=run_web, daemon=True).start()
+
+    # Start Telegram bot
+    main()
 if __name__ == '__main__':
     main()
