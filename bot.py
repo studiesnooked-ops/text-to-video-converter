@@ -357,5 +357,4 @@ if __name__ == "__main__":
 
     # Start Telegram bot
     main()
-if __name__ == '__main__':
-    main()
+
