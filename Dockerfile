@@ -10,13 +10,13 @@ WORKDIR /app
 
 # Copy and install Python dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt Flask gunicorn
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy application
 COPY . .
 
-# Expose port
-EXPOSE 5000
+# Create output directory
+RUN mkdir -p /tmp/output
 
-# Start Flask app
-CMD ["gunicorn", "--bind", "0.0.0.0:$PORT", "--timeout", "120", "app:app"]
+# Run bot
+CMD ["python", "bot.py"]

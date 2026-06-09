@@ -1,9 +1,29 @@
 services:
   - type: web
-    name: text-to-video-converter
+    name: text-to-video-converter-bot
     env: docker
     plan: starter
-    healthCheckPath: /api/health
+    healthCheckPath: /health
     envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: TELEGRAM_CHAT_ID
+        sync: false
       - key: OUTPUT_DIR
         value: /tmp/output
+      - key: VIDEO_FPS
+        value: "24"
+      - key: FONT_SIZE
+        value: "24"
+      - key: FONT_COLOR
+        value: white
+      - key: BACKGROUND_COLOR
+        value: black
+      - key: DURATION_PER_LINE
+        value: "2"
+      - key: VIDEO_WIDTH
+        value: "1280"
+      - key: VIDEO_HEIGHT
+        value: "720"
+      - key: TTS_LANGUAGE
+        value: en

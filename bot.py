@@ -90,26 +90,24 @@ Use /help to see all commands.
 /extract_pdf https://example.com/document.pdf
 
 3️⃣ Convert Text to Video:
-/convert_text "Your text here"
+/convert_text Your text here
 
 4️⃣ Full Pipeline:
 /pipeline https://example.com/playlist.m3u8 https://example.com/doc.pdf
-
-For detailed help, contact @support or use /help
         """
         await update.message.reply_markdown(help_text)
     
     async def status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle /status command"""
         try:
-            status_text = """
+            status_text = f"""
 ✅ Bot Status: ONLINE
 
 📊 System Information:
 • Bot: Text-to-Video Converter
 • Version: 1.0.0
 • Status: Running
-• Output Directory: """ + OUTPUT_DIR + """
+• Output Directory: {OUTPUT_DIR}
 
 🔧 Available Tools:
 • M3U8 Downloader: ✅ Active
@@ -138,10 +136,11 @@ All systems operational! 🚀
             output_file = os.path.join(OUTPUT_DIR, 'downloaded_video.mp4')
             self.downloader.download(url, output_file, verbose=False)
             
-            await update.message.reply_document(
-                document=open(output_file, 'rb'),
-                caption="✅ Video downloaded successfully!"
-            )
+            with open(output_file, 'rb') as video:
+                await update.message.reply_document(
+                    document=video,
+                    caption="✅ Video downloaded successfully!"
+                )
             logger.info(f"Downloaded M3U8 video for user {update.effective_user.id}")
         
         except Exception as e:
@@ -170,10 +169,11 @@ All systems operational! 🚀
                 with open(output_file, 'w', encoding='utf-8') as f:
                     f.write(content)
                 
-                await update.message.reply_document(
-                    document=open(output_file, 'rb'),
-                    caption=f"✅ PDF extracted! Total characters: {len(content)}"
-                )
+                with open(output_file, 'rb') as doc:
+                    await update.message.reply_document(
+                        document=doc,
+                        caption=f"✅ PDF extracted! Total characters: {len(content)}"
+                    )
             else:
                 await update.message.reply_text(f"✅ Extracted Content:\n\n{content}")
             
@@ -190,7 +190,7 @@ All systems operational! 🚀
             if not context.args:
                 await update.message.reply_text(
                     "❌ Please provide text\n\n"
-                    'Usage: /convert_text "Your text here"'
+                    'Usage: /convert_text Your text here'
                 )
                 return
             
@@ -205,10 +205,11 @@ All systems operational! 🚀
             output_file = os.path.join(OUTPUT_DIR, 'text_video.mp4')
             self.converter.convert(temp_text_file, output_file)
             
-            await update.message.reply_document(
-                document=open(output_file, 'rb'),
-                caption="✅ Video created successfully!"
-            )
+            with open(output_file, 'rb') as video:
+                await update.message.reply_document(
+                    document=video,
+                    caption="✅ Video created successfully!"
+                )
             logger.info(f"Created text video for user {update.effective_user.id}")
         
         except Exception as e:
@@ -254,18 +255,21 @@ All systems operational! 🚀
             # Send results
             await update.message.reply_text("📦 Pipeline completed! Sending files...")
             
-            await update.message.reply_document(
-                document=open(video_file, 'rb'),
-                caption="📹 Downloaded Video"
-            )
-            await update.message.reply_document(
-                document=open(pdf_output, 'rb'),
-                caption="📄 Extracted PDF Text"
-            )
-            await update.message.reply_document(
-                document=open(text_video_output, 'rb'),
-                caption="🎬 Generated Text Video"
-            )
+            with open(video_file, 'rb') as video:
+                await update.message.reply_document(
+                    document=video,
+                    caption="📹 Downloaded Video"
+                )
+            with open(pdf_output, 'rb') as doc:
+                await update.message.reply_document(
+                    document=doc,
+                    caption="📄 Extracted PDF Text"
+                )
+            with open(text_video_output, 'rb') as video:
+                await update.message.reply_document(
+                    document=video,
+                    caption="🎬 Generated Text Video"
+                )
             
             logger.info(f"Pipeline completed for user {update.effective_user.id}")
         

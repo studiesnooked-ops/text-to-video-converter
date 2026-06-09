@@ -3,6 +3,13 @@ __pycache__
 .git
 .gitignore
 .env
+.env.local
 *.mp4
 *.pdf
 output/
+temp_*.txt
+temp_*.pdf
+*.log
+.DS_Store
+.vscode/
+.idea/
