@@ -1,3 +1,4 @@
+cat > requirements.txt << 'EOF'
 moviepy==1.0.3
 PyPDF2==3.0.1
 pyttsx3==2.90
@@ -7,3 +8,4 @@ python-dotenv==1.0.0
 click==8.1.7
 Flask==2.3.0
 gunicorn==21.0.0
+EOF
