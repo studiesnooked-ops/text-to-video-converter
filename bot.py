@@ -1,0 +1,327 @@
+#!/usr/bin/env python3
+"""
+Telegram Bot for Text-to-Video Converter
+Handles: M3U8 downloads, PDF extraction, Text-to-video conversion
+"""
+
+import os
+import logging
+from dotenv import load_dotenv
+from telegram import Update, BotCommand
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from pathlib import Path
+import asyncio
+
+from src.m3u8_downloader import M3U8Downloader
+from src.pdf_extractor import PDFExtractor
+from src.text_to_video import TextToVideo
+
+# Load environment variables
+load_dotenv()
+
+# Setup logging
+logging.basicConfig(
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    level=logging.INFO
+)
+logger = logging.getLogger(__name__)
+
+# Configuration
+BOT_TOKEN = os.getenv('TELEGRAM_BOT_TOKEN')
+ADMIN_CHAT_ID = int(os.getenv('TELEGRAM_CHAT_ID', '0'))
+OUTPUT_DIR = os.getenv('OUTPUT_DIR', '/tmp/output')
+
+# Create output directory
+Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+
+
+class TextToVideoBot:
+    """Telegram Bot for Text-to-Video Conversion"""
+    
+    def __init__(self):
+        self.downloader = M3U8Downloader()
+        self.extractor = PDFExtractor()
+        self.converter = TextToVideo()
+    
+    async def start(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /start command"""
+        user = update.effective_user
+        welcome_text = f"""
+🎬 Welcome to Text-to-Video Converter Bot! 🎬
+
+Hi {user.mention_html()}! 
+
+I can help you:
+✅ Download videos from M3U8 playlists
+✅ Extract text from PDF files
+✅ Convert text to video
+✅ Run complete pipelines
+
+Use /help to see all commands.
+        """
+        await update.message.reply_html(welcome_text)
+        logger.info(f"User {user.id} started the bot")
+    
+    async def help(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /help command"""
+        help_text = """
+📖 Available Commands:
+
+🎥 *Video Operations*
+/download_m3u8 - Download video from M3U8 URL
+/convert_text - Convert text to video
+
+📄 *PDF Operations*
+/extract_pdf - Extract text from PDF file
+
+🔄 *Pipeline*
+/pipeline - Run complete pipeline
+
+ℹ️ *Information*
+/status - Check bot status
+/help - Show this message
+
+💡 *Usage Examples:*
+
+1️⃣ Download M3U8:
+/download_m3u8 https://example.com/playlist.m3u8
+
+2️⃣ Extract PDF:
+/extract_pdf https://example.com/document.pdf
+
+3️⃣ Convert Text to Video:
+/convert_text "Your text here"
+
+4️⃣ Full Pipeline:
+/pipeline https://example.com/playlist.m3u8 https://example.com/doc.pdf
+
+For detailed help, contact @support or use /help
+        """
+        await update.message.reply_markdown(help_text)
+    
+    async def status(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /status command"""
+        try:
+            status_text = """
+✅ Bot Status: ONLINE
+
+📊 System Information:
+• Bot: Text-to-Video Converter
+• Version: 1.0.0
+• Status: Running
+• Output Directory: """ + OUTPUT_DIR + """
+
+🔧 Available Tools:
+• M3U8 Downloader: ✅ Active
+• PDF Extractor: ✅ Active
+• Text-to-Video: ✅ Active
+
+All systems operational! 🚀
+            """
+            await update.message.reply_markdown(status_text)
+        except Exception as e:
+            await update.message.reply_text(f"❌ Error checking status: {str(e)}")
+    
+    async def download_m3u8(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /download_m3u8 command"""
+        try:
+            if not context.args:
+                await update.message.reply_text(
+                    "❌ Please provide M3U8 URL\n\n"
+                    "Usage: /download_m3u8 https://example.com/playlist.m3u8"
+                )
+                return
+            
+            url = context.args[0]
+            await update.message.reply_text("📥 Downloading M3U8 video...\nThis may take a while...")
+            
+            output_file = os.path.join(OUTPUT_DIR, 'downloaded_video.mp4')
+            self.downloader.download(url, output_file, verbose=False)
+            
+            await update.message.reply_document(
+                document=open(output_file, 'rb'),
+                caption="✅ Video downloaded successfully!"
+            )
+            logger.info(f"Downloaded M3U8 video for user {update.effective_user.id}")
+        
+        except Exception as e:
+            error_msg = f"❌ Download failed: {str(e)}"
+            await update.message.reply_text(error_msg)
+            logger.error(f"Error downloading M3U8: {str(e)}")
+    
+    async def extract_pdf(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /extract_pdf command"""
+        try:
+            if not context.args:
+                await update.message.reply_text(
+                    "❌ Please provide PDF URL or file path\n\n"
+                    "Usage: /extract_pdf https://example.com/document.pdf"
+                )
+                return
+            
+            pdf_path = context.args[0]
+            await update.message.reply_text("📄 Extracting PDF content...\nPlease wait...")
+            
+            content = self.extractor.extract(pdf_path)
+            
+            # Save to file if content is large
+            if len(content) > 4096:
+                output_file = os.path.join(OUTPUT_DIR, 'extracted_text.txt')
+                with open(output_file, 'w', encoding='utf-8') as f:
+                    f.write(content)
+                
+                await update.message.reply_document(
+                    document=open(output_file, 'rb'),
+                    caption=f"✅ PDF extracted! Total characters: {len(content)}"
+                )
+            else:
+                await update.message.reply_text(f"✅ Extracted Content:\n\n{content}")
+            
+            logger.info(f"Extracted PDF for user {update.effective_user.id}")
+        
+        except Exception as e:
+            error_msg = f"❌ PDF extraction failed: {str(e)}"
+            await update.message.reply_text(error_msg)
+            logger.error(f"Error extracting PDF: {str(e)}")
+    
+    async def convert_text(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /convert_text command"""
+        try:
+            if not context.args:
+                await update.message.reply_text(
+                    "❌ Please provide text\n\n"
+                    'Usage: /convert_text "Your text here"'
+                )
+                return
+            
+            text = ' '.join(context.args)
+            await update.message.reply_text("🎬 Converting text to video...\nThis may take a while...")
+            
+            # Save text to temporary file
+            temp_text_file = os.path.join(OUTPUT_DIR, 'temp_input.txt')
+            with open(temp_text_file, 'w', encoding='utf-8') as f:
+                f.write(text)
+            
+            output_file = os.path.join(OUTPUT_DIR, 'text_video.mp4')
+            self.converter.convert(temp_text_file, output_file)
+            
+            await update.message.reply_document(
+                document=open(output_file, 'rb'),
+                caption="✅ Video created successfully!"
+            )
+            logger.info(f"Created text video for user {update.effective_user.id}")
+        
+        except Exception as e:
+            error_msg = f"❌ Text conversion failed: {str(e)}"
+            await update.message.reply_text(error_msg)
+            logger.error(f"Error converting text: {str(e)}")
+    
+    async def pipeline(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle /pipeline command - run complete workflow"""
+        try:
+            if len(context.args) < 2:
+                await update.message.reply_text(
+                    "❌ Please provide M3U8 URL and PDF URL\n\n"
+                    "Usage: /pipeline https://example.com/playlist.m3u8 https://example.com/doc.pdf"
+                )
+                return
+            
+            m3u8_url = context.args[0]
+            pdf_url = context.args[1]
+            
+            await update.message.reply_text("🔄 Running complete pipeline...\nProcessing M3U8, PDF, and creating video...")
+            
+            # Step 1: Download M3U8
+            await update.message.reply_text("📹 Step 1: Downloading M3U8 video...")
+            video_file = os.path.join(OUTPUT_DIR, 'pipeline_video.mp4')
+            self.downloader.download(m3u8_url, video_file, verbose=False)
+            await update.message.reply_text("✅ Video downloaded")
+            
+            # Step 2: Extract PDF
+            await update.message.reply_text("📄 Step 2: Extracting PDF...")
+            pdf_content = self.extractor.extract(pdf_url)
+            pdf_output = os.path.join(OUTPUT_DIR, 'pipeline_notes.txt')
+            with open(pdf_output, 'w', encoding='utf-8') as f:
+                f.write(pdf_content)
+            await update.message.reply_text("✅ PDF extracted")
+            
+            # Step 3: Create video
+            await update.message.reply_text("🎬 Step 3: Creating text video...")
+            text_video_output = os.path.join(OUTPUT_DIR, 'pipeline_text_video.mp4')
+            self.converter.convert(pdf_output, text_video_output)
+            await update.message.reply_text("✅ Text video created")
+            
+            # Send results
+            await update.message.reply_text("📦 Pipeline completed! Sending files...")
+            
+            await update.message.reply_document(
+                document=open(video_file, 'rb'),
+                caption="📹 Downloaded Video"
+            )
+            await update.message.reply_document(
+                document=open(pdf_output, 'rb'),
+                caption="📄 Extracted PDF Text"
+            )
+            await update.message.reply_document(
+                document=open(text_video_output, 'rb'),
+                caption="🎬 Generated Text Video"
+            )
+            
+            logger.info(f"Pipeline completed for user {update.effective_user.id}")
+        
+        except Exception as e:
+            error_msg = f"❌ Pipeline failed: {str(e)}"
+            await update.message.reply_text(error_msg)
+            logger.error(f"Error in pipeline: {str(e)}")
+    
+    async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
+        """Handle errors"""
+        logger.error(f"Update {update} caused error {context.error}")
+        if update:
+            await update.message.reply_text(f"❌ An error occurred: {str(context.error)}")
+
+
+async def main():
+    """Start the bot"""
+    if not BOT_TOKEN:
+        logger.error("TELEGRAM_BOT_TOKEN not set in environment variables!")
+        return
+    
+    # Create bot application
+    application = Application.builder().token(BOT_TOKEN).build()
+    
+    # Initialize bot handler
+    bot = TextToVideoBot()
+    
+    # Register command handlers
+    application.add_handler(CommandHandler("start", bot.start))
+    application.add_handler(CommandHandler("help", bot.help))
+    application.add_handler(CommandHandler("status", bot.status))
+    application.add_handler(CommandHandler("download_m3u8", bot.download_m3u8))
+    application.add_handler(CommandHandler("extract_pdf", bot.extract_pdf))
+    application.add_handler(CommandHandler("convert_text", bot.convert_text))
+    application.add_handler(CommandHandler("pipeline", bot.pipeline))
+    
+    # Error handler
+    application.add_error_handler(bot.error_handler)
+    
+    # Set bot commands
+    commands = [
+        BotCommand("start", "Start the bot"),
+        BotCommand("help", "Show help message"),
+        BotCommand("status", "Check bot status"),
+        BotCommand("download_m3u8", "Download video from M3U8"),
+        BotCommand("extract_pdf", "Extract text from PDF"),
+        BotCommand("convert_text", "Convert text to video"),
+        BotCommand("pipeline", "Run complete pipeline"),
+    ]
+    await application.bot.set_my_commands(commands)
+    
+    logger.info("Text-to-Video Telegram Bot started!")
+    
+    # Run bot
+    await application.run_polling(allowed_updates=Update.ALL_TYPES)
+
+
+if __name__ == '__main__':
+    asyncio.run(main())
