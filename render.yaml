@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: text-to-video-converter
+    env: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: OUTPUT_DIR
+        value: /tmp/output
