@@ -8,9 +8,10 @@ import os
 import logging
 from dotenv import load_dotenv
 from telegram import Update, BotCommand
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Application, CommandHandler, ContextTypes
 from pathlib import Path
-import asyncio
+import signal
+import sys
 
 from src.m3u8_downloader import M3U8Downloader
 from src.pdf_extractor import PDFExtractor
@@ -281,7 +282,7 @@ All systems operational! 🚀
     async def error_handler(self, update: Update, context: ContextTypes.DEFAULT_TYPE):
         """Handle errors"""
         logger.error(f"Update {update} caused error {context.error}")
-        if update:
+        if update and update.message:
             await update.message.reply_text(f"❌ An error occurred: {str(context.error)}")
 
 
@@ -289,7 +290,7 @@ async def main():
     """Start the bot"""
     if not BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN not set in environment variables!")
-        return
+        sys.exit(1)
     
     # Create bot application
     application = Application.builder().token(BOT_TOKEN).build()
@@ -319,13 +320,28 @@ async def main():
         BotCommand("convert_text", "Convert text to video"),
         BotCommand("pipeline", "Run complete pipeline"),
     ]
-    await application.bot.set_my_commands(commands)
     
-    logger.info("Text-to-Video Telegram Bot started!")
+    try:
+        await application.bot.set_my_commands(commands)
+        logger.info("Text-to-Video Telegram Bot started!")
+        
+        # Run bot with proper error handling
+        await application.run_polling(allowed_updates=Update.ALL_TYPES)
     
-    # Run bot
-    await application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except Exception as e:
+        logger.error(f"Fatal error: {str(e)}")
+        sys.exit(1)
 
 
 if __name__ == '__main__':
-    asyncio.run(main())
+    # Handle signals gracefully
+    import asyncio
+    
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user")
+        sys.exit(0)
+    except Exception as e:
+        logger.error(f"Application error: {str(e)}")
+        sys.exit(1)
