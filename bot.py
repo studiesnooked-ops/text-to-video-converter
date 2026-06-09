@@ -10,7 +10,6 @@ from dotenv import load_dotenv
 from telegram import Update, BotCommand
 from telegram.ext import Application, CommandHandler, ContextTypes
 from pathlib import Path
-import signal
 import sys
 
 from src.m3u8_downloader import M3U8Downloader
@@ -283,11 +282,14 @@ All systems operational! 🚀
         """Handle errors"""
         logger.error(f"Update {update} caused error {context.error}")
         if update and update.message:
-            await update.message.reply_text(f"❌ An error occurred: {str(context.error)}")
+            try:
+                await update.message.reply_text(f"❌ An error occurred: {str(context.error)}")
+            except Exception as e:
+                logger.error(f"Error in error handler: {str(e)}")
 
 
-async def main():
-    """Start the bot"""
+def main() -> None:
+    """Start the bot - use synchronous main for Render"""
     if not BOT_TOKEN:
         logger.error("TELEGRAM_BOT_TOKEN not set in environment variables!")
         sys.exit(1)
@@ -310,38 +312,19 @@ async def main():
     # Error handler
     application.add_error_handler(bot.error_handler)
     
-    # Set bot commands
-    commands = [
-        BotCommand("start", "Start the bot"),
-        BotCommand("help", "Show help message"),
-        BotCommand("status", "Check bot status"),
-        BotCommand("download_m3u8", "Download video from M3U8"),
-        BotCommand("extract_pdf", "Extract text from PDF"),
-        BotCommand("convert_text", "Convert text to video"),
-        BotCommand("pipeline", "Run complete pipeline"),
-    ]
+    # Set bot commands (this will run async internally)
+    logger.info("Text-to-Video Telegram Bot starting...")
     
     try:
-        await application.bot.set_my_commands(commands)
-        logger.info("Text-to-Video Telegram Bot started!")
-        
-        # Run bot with proper error handling
-        await application.run_polling(allowed_updates=Update.ALL_TYPES)
-    
+        # Run the bot - this blocks and runs the event loop
+        application.run_polling(allowed_updates=Update.ALL_TYPES)
+    except KeyboardInterrupt:
+        logger.info("Bot stopped by user")
+        sys.exit(0)
     except Exception as e:
         logger.error(f"Fatal error: {str(e)}")
         sys.exit(1)
 
 
 if __name__ == '__main__':
-    # Handle signals gracefully
-    import asyncio
-    
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        logger.info("Bot stopped by user")
-        sys.exit(0)
-    except Exception as e:
-        logger.error(f"Application error: {str(e)}")
-        sys.exit(1)
+    main()
