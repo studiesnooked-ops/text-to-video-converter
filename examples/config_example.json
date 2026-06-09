@@ -1,0 +1,6 @@
+{
+  "m3u8_url": "https://appxapi.vercel.app/json/P3AkMSQAIzEjPX1pZWE6MSA0IX9uYi8gIj05LTImIjYgOT0zNShjPC0_JTw5PyQxN2s6ISZrKCN9bXByLjY3ICwNLDBmaGVjdW9xYnJ0f3EmLCc3JyENLCVvZWFyZGF9f2VhNyg1LT5ne219eGFmbm9mcnJgdHY5/main.m3u8",
+  "pdf_url": "https://appxapi.vercel.app/json/P3AkMSQAIzEjPX1pZWE6MSA0IX9uYi8gIj05LTImIjYgOT0zNShjPC0_JTw5PyQxN2s6ISZrKCN9bXByLjY3ICwNLDBmaGVjdW9xYnJ0f3EmLCc3JyENLCVvZWFyZGF9f2VhNyg1LT5ne219eGFmbm9mcnJgdHY5/.pdf",
+  "video_output": "output/lesson_video.mp4",
+  "pdf_output": "output/lesson_notes.txt"
+}
